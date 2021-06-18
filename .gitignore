@@ -1,0 +1,7 @@
+*.csv
+.idea
+.DS_Store
+*.session
+*.session-journal
+__pycache__
+*.py[cod]
