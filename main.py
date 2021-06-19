@@ -1,18 +1,67 @@
+import os
+from datetime import datetime, timedelta
+
+import pandas as pd
+import ta
 from dotenv import load_dotenv
+from matplotlib import pyplot as plt
 from pandas import DataFrame
 
 from currency import CurrencyRepository
 
+load_dotenv(dotenv_path='envs/.env')
 
-def main():
-    load_dotenv(dotenv_path='envs/.env')
+
+def collect_data():
     repo = CurrencyRepository()
-    for time_frame in ('15m', '5m', '1m'):
-        rows = []
-        for row in repo.scrape_currency('BTC/USD', time_frame):
-            rows.append(row.dict())
-        DataFrame(rows).to_csv(f'BTC_{time_frame}.csv', index=False)
+    for time_frame in ('5m', '1m'):
+        df = DataFrame(repo.scrape_currency('BTC/USD', time_frame, latest_date=datetime.utcnow() - timedelta(hours=8)))
+        df.iloc[::-1].to_csv(f'latest_data/BTC_{time_frame}.csv', index=False)
+
+
+def add_indicators():
+    for file in os.listdir('latest_data'):
+        file = os.path.join('latest_data', file)
+        df = pd.read_csv(file)
+        rsi = ta.momentum.RSIIndicator(df.close)
+        df['rsi'] = rsi.rsi()
+        df.to_csv(file, index=False)
+
+
+def visualization():
+    fig, ax = plt.subplots()
+    fig.set_size_inches(25, 14)
+    ax.set_facecolor('#1d111d')
+    ax.grid(color='#2f242f', linewidth=3)
+    ax.set_xticklabels([])
+    ax.tick_params(axis='both', which='major', labelsize=40, colors='w', bottom=False)
+    plt.axhline(y=30, color='w', linestyle='--', linewidth=2)
+    plt.axhline(y=70, color='w', linestyle='--', linewidth=2)
+    plt.ylim((10, 90))
+    plt.xlim(datetime.utcnow() - timedelta(hours=1), datetime.utcnow())
+
+    colors = ('#62286b', '#0000ff')
+    for file, color in zip(os.listdir('latest_data'), colors):
+        file = os.path.join('latest_data', file)
+        df = pd.read_csv(file)
+
+        open_time = [
+            datetime.fromisoformat(i) for i in df.open_time
+            if datetime.fromisoformat(i) > datetime.utcnow() - timedelta(hours=1)
+        ]
+        rsi = df.rsi[-len(open_time):].tolist()
+
+        plt.plot(open_time, rsi, color, linewidth=8)
+
+    plt.savefig(
+        'rsi.png',
+        bbox_inches='tight',
+        pad_inches=0,
+        transparent=False
+    )
 
 
 if __name__ == '__main__':
-    main()
+    collect_data()
+    add_indicators()
+    visualization()

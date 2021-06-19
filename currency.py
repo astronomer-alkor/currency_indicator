@@ -32,7 +32,7 @@ class CurrencyRepository:
             ticker: str,
             time_frame: str,
             latest_date: Optional[datetime] = None
-    ) -> Generator[List[Currency], None, None]:
+    ) -> Generator[Currency, None, None]:
 
         collected_items_times = set()
         prepared_symbol = urllib.parse.quote(ticker)
@@ -63,7 +63,7 @@ class CurrencyRepository:
                     low=item[4],
                     volume=item[5],
                     time_frame=time_frame
-                )
+                ).dict()
                 chunk.append(item)
 
             if chunk:
@@ -71,6 +71,6 @@ class CurrencyRepository:
             else:
                 break
 
-            start_time = int(chunk[-1].open_time.timestamp()) * 1000 - time_frames[time_frame] * offset
+            start_time = int(chunk[-1]['open_time'].timestamp()) * 1000 - time_frames[time_frame] * offset
             start_time_prepared = '&startTime=' + str(start_time)
             offset = 900
